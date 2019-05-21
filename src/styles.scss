@@ -1,0 +1,30 @@
+.base {
+  path {
+    stroke: #fff;
+    fill: #999;
+  }
+}
+
+.circle {
+  stroke-width: 0.5px;
+  stroke: black;
+  cursor: pointer;
+}
+
+.location-name {
+  fill: black;
+  stroke-width: 0.02px;
+  stroke: white;
+  font-size: 0.7px;
+  font-weight: bold;
+  text-anchor: middle;
+}
+
+.location-name-small {
+  fill: black;
+  stroke-width: 0.015px;
+  stroke: white;
+  font-size: 0.6px;
+  font-weight: bold;
+  text-anchor: middle;
+}
