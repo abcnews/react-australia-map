@@ -1,6 +1,5 @@
 import React, { useRef, useLayoutEffect, useEffect, useState } from 'react';
 import styles from './styles.scss';
-import Color from 'color';
 
 import * as d3 from 'd3-selection';
 import * as Geo from 'd3-geo';
@@ -21,121 +20,107 @@ let mapZoom;
 let mapX = 0;
 let mapY = 0;
 
+let legend;
 let locationLabel;
 let otherLabels;
-
-function createLabel(features) {
-  const label = features.append('g');
-  let balloonWidth = 280;
-  let locationLabelBalloon = label
-    .append('g')
-    .attr('fill', 'black')
-    .style('pointer-events', 'none')
-    .attr('transform', `translate(-${balloonWidth / 2}, -69)`);
-  locationLabelBalloon
-    .append('polygon')
-    .attr('points', '0,0 10,20, 20,0')
-    .attr('transform', `translate(${balloonWidth / 2 - 10}, 49)`);
-  locationLabelBalloon
-    .append('rect')
-    .attr('x', 0)
-    .attr('y', 0)
-    .attr('rx', 3)
-    .attr('ry', 3)
-    .attr('width', balloonWidth)
-    .attr('height', 50);
-  locationLabelBalloon
-    .append('text')
-    .attr('font-size', 22)
-    .attr('fill', 'white')
-    .style('text-anchor', 'middle')
-    .attr('x', balloonWidth / 2)
-    .attr('y', 33)
-    .text('');
-  return label;
-}
-
-function updateLabel(label, d, k) {
-  if (!d) return;
-
-  // shrink the labels a bit
-  k = k * 1.3;
-
-  let x = d.x;
-  let y = d.y;
-
-  // Some electorates are split over water so we need
-  // to adjust where the label pin goes
-  let bounds;
-  switch (d.properties.name.toLowerCase()) {
-    case 'bowman':
-      bounds = path.bounds(d);
-      x = bounds[0][0] + (bounds[1][0] - bounds[0][0]) * 0.2;
-      break;
-    case 'bonner':
-      bounds = path.bounds(d);
-      x = bounds[0][0] + (bounds[1][0] - bounds[0][0]) * 0.2;
-      y = bounds[0][1] + (bounds[1][1] - bounds[0][1]) * 0.8;
-      break;
-    case 'mayo':
-      bounds = path.bounds(d);
-      x = bounds[0][0] + (bounds[1][0] - bounds[0][0]) * 0.8;
-      y = bounds[0][1] + (bounds[1][1] - bounds[0][1]) * 0.5;
-      break;
-    case 'parkes':
-      bounds = path.bounds(d);
-      x = bounds[0][0] + (bounds[1][0] - bounds[0][0]) * 0.7;
-      break;
-    case 'fenner':
-      bounds = path.bounds(d);
-      x = bounds[0][0] + (bounds[1][0] - bounds[0][0]) * 0.1;
-      break;
-    default:
-    // nothing
-  }
-
-  label.attr('transform', `translate(${x}, ${y}) scale(${1 / k})`).style('opacity', 1);
-
-  var text = label.select('text');
-
-  const updatedText = d.properties.name + ' (' + (Math.round(d.properties.margin * 100) + '%)');
-  if (updatedText !== text.text()) {
-    if (d.properties.margin === -1) {
-      text.text(d.properties.name);
-    } else {
-      text.text(d.properties.name + ', ' + d.properties.party + ' ' + d.properties.margin + '%');
-    }
-  }
-}
 
 /**
  * Props {
  *   fill(datum: any): string,
- *   data: [{
- *     code: string,
- *     name: string,
- *     margin: number,
- *     swing: number,
- *     party: {
- *       code: string,
- *       name: string,
- *       colour: string
- *     }
- *   }],
- *   parties: [{
- *     code: string,
- *     name: string,
- *     colour: string
- *   }]
+ *   labelText(datum: any): string,
+ *   disableClicks: boolean,
+ *   data: [any],
+ *   processData(d: any),
+ *   setupLegend(svg: D3Element, legend: D3Element),
  *   marker: {
  *     electorate: string,
  *     zoom: number
  *   }
+ *   onZoom(zoomFactor: number, svg: D3Element, legend: D3Element)
  * }
  */
 export default props => {
   const base = useRef(null);
   const [currentElectorate, setCurrentElectorate] = useState(null);
+
+  function createLabel(features) {
+    const label = features.append('g');
+    let balloonWidth = 280;
+    let locationLabelBalloon = label
+      .append('g')
+      .attr('fill', 'black')
+      .style('pointer-events', 'none')
+      .attr('transform', `translate(-${balloonWidth / 2}, -69)`);
+    locationLabelBalloon
+      .append('polygon')
+      .attr('points', '0,0 10,20, 20,0')
+      .attr('transform', `translate(${balloonWidth / 2 - 10}, 49)`);
+    locationLabelBalloon
+      .append('rect')
+      .attr('x', 0)
+      .attr('y', 0)
+      .attr('rx', 3)
+      .attr('ry', 3)
+      .attr('width', balloonWidth)
+      .attr('height', 50);
+    locationLabelBalloon
+      .append('text')
+      .attr('font-size', 22)
+      .attr('fill', 'white')
+      .style('text-anchor', 'middle')
+      .attr('x', balloonWidth / 2)
+      .attr('y', 33)
+      .text('');
+    return label;
+  }
+
+  function updateLabel(label, d, k) {
+    if (!d) return;
+
+    // shrink the labels a bit
+    k = k * 1.3;
+
+    let x = d.x;
+    let y = d.y;
+
+    // Some electorates are split over water so we need
+    // to adjust where the label pin goes
+    let bounds;
+    switch (d.properties.name.toLowerCase()) {
+      case 'bowman':
+        bounds = path.bounds(d);
+        x = bounds[0][0] + (bounds[1][0] - bounds[0][0]) * 0.2;
+        break;
+      case 'bonner':
+        bounds = path.bounds(d);
+        x = bounds[0][0] + (bounds[1][0] - bounds[0][0]) * 0.2;
+        y = bounds[0][1] + (bounds[1][1] - bounds[0][1]) * 0.8;
+        break;
+      case 'mayo':
+        bounds = path.bounds(d);
+        x = bounds[0][0] + (bounds[1][0] - bounds[0][0]) * 0.8;
+        y = bounds[0][1] + (bounds[1][1] - bounds[0][1]) * 0.5;
+        break;
+      case 'parkes':
+        bounds = path.bounds(d);
+        x = bounds[0][0] + (bounds[1][0] - bounds[0][0]) * 0.7;
+        break;
+      case 'fenner':
+        bounds = path.bounds(d);
+        x = bounds[0][0] + (bounds[1][0] - bounds[0][0]) * 0.1;
+        break;
+      default:
+      // nothing
+    }
+
+    label.attr('transform', `translate(${x}, ${y}) scale(${1 / k})`).style('opacity', 1);
+
+    var text = label.select('text');
+
+    let updatedText = d.properties.name;
+    if (typeof props.labelText === 'function') updatedText = props.labelText(d);
+    if (updatedText !== text.text()) text.text(updatedText);
+  }
 
   // Initialise the map
   useLayoutEffect(() => {
@@ -155,64 +140,12 @@ export default props => {
 
     // Graft the support onto the map data
     data = TopoJSON.feature(mapJSON, mapJSON.objects.map).features.map(f => {
-      const result = props.data.filter(d => f.properties.code.toLowerCase() === d.code.toLowerCase())[0];
-      if (result) {
-        f.properties.margin = result.margin;
-        f.properties.party = result.party.code;
-        f.properties.colour = result.party.colour;
-        f.properties.name = result.name;
-      } else {
-        f.properties.margin = -1;
-        f.properties.party = '';
-        f.properties.colour = '#000';
-      }
       f.x = path.centroid(f)[0];
       f.y = path.centroid(f)[1];
+
+      if (typeof props.processData === 'function') f = props.processData(f);
+
       return f;
-    });
-
-    // Set up the patterns
-    const defs = svg.append('defs');
-    props.parties.concat({ code: 'guide', colour: '#aaa' }).forEach(p => {
-      const def = defs
-        .append('pattern')
-        .attr('id', 'marginal_' + p.code)
-        .attr('width', '7')
-        .attr('height', '7')
-        .attr('patternUnits', 'userSpaceOnUse')
-        .attr('patternTransform', 'rotate(-45)');
-      def
-        .append('rect')
-        .classed('background', true)
-        .attr('width', '14')
-        .attr('height', '14')
-        .attr('fill', Color(p.colour).lighten(0.4))
-        .attr('transform', 'translate(-4, -4)');
-      def
-        .append('rect')
-        .classed('line', true)
-        .attr('width', '7')
-        .attr('height', '3')
-        .attr('fill', p.colour);
-
-      const def2 = defs
-        .append('pattern')
-        .attr('id', 'marginal_' + p.code + '2')
-        .attr('width', '7')
-        .attr('height', '7')
-        .attr('patternUnits', 'userSpaceOnUse')
-        .attr('patternTransform', 'rotate(-45)');
-      def2
-        .append('rect')
-        .attr('width', '14')
-        .attr('height', '14')
-        .attr('fill', Color(p.colour).lighten(0.4))
-        .attr('transform', 'translate(-4, -4)');
-      def2
-        .append('rect')
-        .attr('width', '7')
-        .attr('height', '3')
-        .attr('fill', p.colour);
     });
 
     features = svg.append('g').attr('class', styles.features);
@@ -222,9 +155,12 @@ export default props => {
       .enter()
       .append('path')
       .attr('d', path)
-      .style('fill', d => (d.properties.margin >= 5 ? d.properties.colour : `url(#marginal_${d.properties.party})`))
+      .style('fill', d => {
+        if (typeof props.fill === 'undefined') return 'black';
+        return props.fill(d);
+      })
       .on('click', d => {
-        // TODO: this should be optional
+        if (typeof props.disableClicks !== 'undefined' || props.disableClicks === true) return;
         zoomTo({ config: { electorate: d.properties.name } }, true);
       });
 
@@ -242,87 +178,10 @@ export default props => {
     locationLabel = createLabel(features);
 
     // Legend
-    const legend = svg.append('g');
-    const legendX = (width - 300) / 2;
-    const legendY = height - 115;
-    legend.attr('transform', `translate(${legendX}, ${legendY})`);
-    legend
-      .append('rect')
-      .attr('x', 0)
-      .attr('y', 0)
-      .attr('width', 300)
-      .attr('height', 110)
-      .attr('fill', 'rgba(255,255,255,0.95)');
-    let nextX = 15;
-    let nextY = 15;
-    let col = 0;
-    props.parties.forEach(p => {
-      legend
-        .append('rect')
-        .attr('x', nextX)
-        .attr('y', nextY)
-        .attr('width', 15)
-        .attr('height', 15)
-        .attr('fill', p.colour);
-      legend
-        .append('rect')
-        .attr('x', nextX + 20)
-        .attr('y', nextY)
-        .attr('width', 15)
-        .attr('height', 15)
-        .attr('fill', `url(#marginal_${p.code}2)`);
-      legend
-        .append('text')
-        .attr('x', nextX + 45)
-        .attr('y', nextY + 12)
-        .attr('font-family', 'ABCSans, Arial, sans-serif')
-        .attr('font-size', 12)
-        .text(p.code);
+    if (typeof props.setupLegend === 'function') props.setupLegend(svg, legend);
 
-      col = (col + 1) % 3;
-      nextX += (300 - 30) / 3;
-      if (col === 0) {
-        nextY += 20;
-        nextX = 15;
-      }
-    });
-
-    nextY += 30;
-    nextX = 85;
-
-    legend
-      .append('rect')
-      .attr('x', nextX)
-      .attr('y', nextY)
-      .attr('width', 15)
-      .attr('height', 15)
-      .attr('fill', '#aaa');
-    legend
-      .append('text')
-      .attr('x', nextX + 20)
-      .attr('y', nextY + 12)
-      .attr('font-family', 'ABCSans, Arial, sans-serif')
-      .attr('font-size', 12)
-      .attr('fill', '#666')
-      .text('SAFE');
-    legend
-      .append('rect')
-      .attr('x', nextX + 60)
-      .attr('y', nextY)
-      .attr('width', 15)
-      .attr('height', 15)
-      .attr('fill', `url(#marginal_guide2)`);
-    legend
-      .append('text')
-      .attr('x', nextX + 80)
-      .attr('y', nextY + 12)
-      .attr('font-family', 'ABCSans, Arial, sans-serif')
-      .attr('font-size', 12)
-      .attr('fill', '#666')
-      .text('MARGINAL');
-
-    // Zoom to Aus
-    zoomTo();
+    // Start by showing all of Australia
+    zoomTo(null, false, 0);
   }, []);
 
   // Recalculate the map when the window resizes
@@ -356,10 +215,15 @@ export default props => {
 
     if (window.__ODYSSEY__) {
       window.__ODYSSEY__.scheduler.subscribe(onResize);
+    } else {
+      window.addEventListener('resize', onResize);
     }
+
     return () => {
       if (window.__ODYSSEY__) {
         window.__ODYSSEY__.scheduler.unsubscribe(onResize);
+      } else {
+        window.removeEventListener('resize', onResize);
       }
     };
   }, []);
@@ -563,27 +427,8 @@ export default props => {
       .transition()
       .duration(900 * transitionDampener)
       .attr('stroke-width', 0.5 * factor);
-    props.parties.forEach(party => {
-      svg
-        .select('#marginal_' + party.code)
-        .transition()
-        .duration(900 * transitionDampener)
-        .attr('width', 7 * factor)
-        .attr('height', 7 * factor);
-      svg
-        .select('#marginal_' + party.code + ' .background')
-        .transition()
-        .duration(900 * transitionDampener)
-        .attr('width', 14 * factor)
-        .attr('height', 14 * factor)
-        .attr('transform', `translate(-${4 * factor}, -${4 * factor})`);
-      svg
-        .select('#marginal_' + party.code + ' .line')
-        .transition()
-        .duration(900 * transitionDampener)
-        .attr('width', 7 * factor)
-        .attr('height', 4 * factor);
-    });
+
+    if (typeof props.onZoom === 'function') props.onZoom(factor, svg, legend);
 
     mapX = x;
     mapY = y;

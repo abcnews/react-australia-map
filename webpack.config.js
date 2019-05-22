@@ -33,7 +33,6 @@ module.exports = {
             options: {
               camelCase: true,
               localIdentName: '[hash:base64:8]',
-              // minimize: true,
               modules: true,
               sourceMap: false
             }
