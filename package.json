@@ -27,6 +27,14 @@
   "peerDependencies": {
     "react": "^16.8.6"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/abcnews/react-australia-map.git"
+  },
+  "bugs": {
+    "url": "https://github.com/abcnews/react-australia-map/issues"
+  },
+  "homepage": "https://github.com/abcnews/react-australia-map#readme",
   "scripts": {
     "build": "webpack",
     "prepublishOnly": "npm run build"
